@@ -3,8 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Product;
+use App\Repository\ProductRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -19,6 +21,32 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 class ProductController extends AbstractController
 {
+
+    /**
+     * @Route("/products", name="list.product.get", methods={"GET"})
+     */
+    public function listProducts(ProductRepository $productRepository, Request $request)
+    {
+        // je recupere le parmetre orderBy soit avec ASC ou DESC
+        $orderBy = $request->get("orderBy");
+
+        // je verifie que le client m'a envoyé la bonne valeur sinne je ratrappe
+        if(!in_array($orderBy, ['asc', 'desc'])){
+            $orderBy = 'asc';
+        }
+
+        // je recupere les produits avec l'ordre que le clien à choisie
+        $products =  $productRepository->findBy(
+            []
+            ,
+            ["id"=> $orderBy]
+        );
+
+
+        // je renvoie l arepense ou client
+        return $this->json($products, Response::HTTP_OK);
+    }
+
     /**
      * @Route("/products", name="create.product.post", methods={"POST"})
      */
