@@ -22,13 +22,11 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class ProductController extends AbstractController
 {
 
-
     /**
      * @Route("/products/{id}", name="one.products.get", methods={"GET"})
      */
     public function oneProduct( Product $product = null )
     {
-
         if ( is_null($product) ) {
             return $this->json(
                 [
@@ -36,18 +34,24 @@ class ProductController extends AbstractController
                 ]
                 ,
                 Response::HTTP_NOT_FOUND
-
             );
         }
 
-        return $this->json($product, 200);
+        return $this->json(
+            $product,
+            200,
+            [],
+            [
+                'groups' => 'detail',
+            ]
+        );
     }
 
 
     /**
      * @Route("/products/{id}", name="one.products.delete", methods={"DELETE"})
      */
-    public function deletProduct( Product $product = null, EntityManagerInterface $em)
+    public function deletProduct( Product $product = null, EntityManagerInterface $em )
     {
 
         if ( is_null($product) ) {
@@ -89,7 +93,14 @@ class ProductController extends AbstractController
 
 
         // je renvoie l arepense ou client
-        return $this->json($products, Response::HTTP_OK);
+        return $this->json(
+            $products,
+            Response::HTTP_OK,
+            [],
+            [
+                "groups"=> ["list.products"]
+            ]
+        );
     }
 
     /**
@@ -118,7 +129,7 @@ class ProductController extends AbstractController
 
         // je valide si les contraites sont respectées
 
-        $errors = $validator->validate($product);
+        $errors = $validator->validate($product, null, []);
 
         if ( $errors->count() > 0 ) {
 
