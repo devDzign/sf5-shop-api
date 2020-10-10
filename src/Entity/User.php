@@ -59,6 +59,13 @@ class User
      */
     private $city;
 
+    /**
+     * @ORM\OneToOne(targetEntity=Image::class, cascade={"persist", "remove"})
+     */
+    private $image;
+
+
+
     public function getId(): ?int
     {
         return $this->id;
@@ -123,4 +130,17 @@ class User
 
         return $this;
     }
+
+    public function getImage(): ?Image
+    {
+        return $this->image;
+    }
+
+    public function setImage(?Image $image): self
+    {
+        $this->image = $image;
+
+        return $this;
+    }
+
 }

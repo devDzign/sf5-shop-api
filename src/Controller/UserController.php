@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Image;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -71,8 +72,70 @@ class UserController extends AbstractController
             201,
             [],
             [
-                "groups"=> ["registration"]
+                "groups" => ["registration"],
             ]
         );
+    }
+
+
+    /**
+     * @Route("/users/{id}/images", name="create.and.add.image.for.user", methods={"POST"})
+     */
+    public function craeteAndAddImageForUser(
+        User $user = null,
+        Request $request,
+        SerializerInterface $serializer,
+        ValidatorInterface $validator,
+        EntityManagerInterface $entityManager
+    )
+    {
+
+        if ( is_null($user) ) {
+
+            $dataError =  [
+                "messsage" => "user not found withh this id : ".$request->get("id"),
+                "code"     => 400,
+
+            ];
+            return $this->json(
+                $dataError
+               ,
+                400
+            );
+        }
+
+
+        $image = $serializer->deserialize($request->getContent(), Image::class,'json',[
+            ObjectNormalizer::DISABLE_TYPE_ENFORCEMENT=> true
+        ]);
+
+
+        $errors =  $validator->validate($image);
+
+        if($errors->count()>0) {
+            $dataError =  [
+                "messsage" => "Some Errors in body image",
+                "code"     => 400,
+
+            ];
+            return $this->json(
+                $dataError
+                ,
+                400
+            );
+        }
+
+        $oldImage = $user->getImage();
+
+        $user->setImage($image);
+
+        if($oldImage){
+            $entityManager->remove($oldImage);
+        }
+
+        $entityManager->flush();
+
+
+        return $this->json($user, 200);
     }
 }
