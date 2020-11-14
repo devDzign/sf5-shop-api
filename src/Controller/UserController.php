@@ -6,6 +6,7 @@ use App\Entity\Image;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
@@ -20,18 +21,38 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  */
 class UserController extends AbstractController
 {
+
     /**
-     * @Route("/users", name="user.registration", methods={"POST"})
+     * @var SerializerInterface
      */
-    public function registration(
-        Request $request,
+    private $serializer;
+    /**
+     * @var ValidatorInterface
+     */
+    private $validator;
+    /**
+     * @var EntityManagerInterface
+     */
+    private $entityManager;
+
+    public function __construct(
         SerializerInterface $serializer,
         ValidatorInterface $validator,
         EntityManagerInterface $entityManager
     ) {
+        $this->serializer    = $serializer;
+        $this->validator     = $validator;
+        $this->entityManager = $entityManager;
+    }
+
+    /**
+     * @Route("/users", name="user.registration", methods={"POST"})
+     */
+    public function registration( Request $request )
+    {
         $data = $request->getContent();
 
-        $user = $serializer->deserialize(
+        $user = $this->serializer->deserialize(
             $data,
             User::class,
             'json',
@@ -41,7 +62,7 @@ class UserController extends AbstractController
         );
 
 
-        $errors = $validator->validate($user, null, ["add.user"]);
+        $errors = $this->validator->validate($user, null, ["add.user"]);
 
         $errorsResponse = ['errors' => [], 'code' => 400];
 
@@ -63,9 +84,9 @@ class UserController extends AbstractController
         }
 
 
-        $entityManager->persist($user);
+        $this->entityManager->persist($user);
 
-        $entityManager->flush();
+        $this->entityManager->flush();
 
         return $this->json(
             $user,
@@ -79,45 +100,18 @@ class UserController extends AbstractController
 
 
     /**
-     * @Route("/users/{id}/images", name="create.and.add.image.for.user", methods={"POST"})
+     * @Route("/users/{idUser}/image", name="add_image_for_user", methods={"PUT"})
+     * @return JsonResponse
      */
-    public function craeteAndAddImageForUser(
-        User $user = null,
-        Request $request,
-        SerializerInterface $serializer,
-        ValidatorInterface $validator,
-        EntityManagerInterface $entityManager
-    )
+    public function addImageForUser( User $user = null, Request $request )
     {
-
         if ( is_null($user) ) {
-
-            $dataError =  [
-                "messsage" => "user not found withh this id : ".$request->get("id"),
+            $dataError = [
+                "messsage" => "user not found with this id : ".$request->get("idUser"),
                 "code"     => 400,
 
             ];
-            return $this->json(
-                $dataError
-               ,
-                400
-            );
-        }
 
-
-        $image = $serializer->deserialize($request->getContent(), Image::class,'json',[
-            ObjectNormalizer::DISABLE_TYPE_ENFORCEMENT=> true
-        ]);
-
-
-        $errors =  $validator->validate($image);
-
-        if($errors->count()>0) {
-            $dataError =  [
-                "messsage" => "Some Errors in body image",
-                "code"     => 400,
-
-            ];
             return $this->json(
                 $dataError
                 ,
@@ -125,16 +119,48 @@ class UserController extends AbstractController
             );
         }
 
+        // je recupere encienne image
         $oldImage = $user->getImage();
+
+        $options = [
+            ObjectNormalizer::DISABLE_TYPE_ENFORCEMENT => true
+        ];
+
+        if($oldImage !== null){
+            // encienne image existe alor je l'a mise à jour  [
+            //   ObjectNormalizer::DISABLE_TYPE_ENFORCEMENT => true,
+            //   ObjectNormalizer::OBJECT_TO_POPULATE => $oldImage
+            // ]
+            //
+          $options[ObjectNormalizer::OBJECT_TO_POPULATE] =  $oldImage;
+        }
+
+        $image =  $image = $this->serializer->deserialize(
+            $request->getContent(),
+            Image::class,
+            'json',
+            $options
+        );
+
+        $errors = $this->validator->validate($image);
+
+        if ( $errors->count() > 0 ) {
+            $dataError = [
+                "messsage" => "Some Errors in body image",
+                "code"     => 400,
+            ];
+
+            return $this->json(
+                $dataError
+                ,
+                400
+            );
+        }
 
         $user->setImage($image);
 
-        if($oldImage){
-            $entityManager->remove($oldImage);
-        }
-
-        $entityManager->flush();
-
+        $this->entityManager->persist($image);
+        $this->entityManager->flush();
 
         return $this->json($user, 200);
     }

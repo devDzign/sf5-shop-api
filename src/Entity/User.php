@@ -59,8 +59,9 @@ class User
      */
     private $city;
 
+
     /**
-     * @ORM\OneToOne(targetEntity=Image::class, cascade={"persist", "remove"})
+     * @ORM\OneToOne(targetEntity=Image::class, cascade={"persist"})
      */
     private $image;
 
